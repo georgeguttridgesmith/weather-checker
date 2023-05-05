@@ -50,10 +50,6 @@ def getweather(latitude, longitude, appid='', outputformat='json', past=2, inter
         print(f"Error: {response.status_code}")
 
 
-
-
-# getweather(latitude=135.9366703, longitude=34.7979113, appid=clientid, outputformat='json', past=2, intervals=5)
-
 teagardendataxlsx = 'TeaGardensData.xlsx'
 teagardendata = obubudatadir + teagardendataxlsx
 
@@ -82,9 +78,8 @@ for sheet in sheetnames:
         delete_rows_with_duplicates(sheet, 'Tea Garden Name', xlsx_path_name_list[0])
     else:
         delete_rows_with_duplicates(sheet, 'Date', xlsx_path_name_list[0])
-        print(f'Rows from {sheet} have been deleted')
-    
-# delete_xlsx_rows(gardennames, rows=[1,5,9,15], xlsx_file_loc='/Users/georgeguttridge-smith/code/obubu/obubu-data/2023-05-04TeaGardensData.xlsx')
+        print(f'Rows from {sheet} have been delete')
+
 
 
 

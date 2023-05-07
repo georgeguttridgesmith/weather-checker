@@ -16,7 +16,7 @@ dotenvpath = str(root) + '/weather-checker.env'
 load_dotenv(dotenv_path=dotenvpath)
 
 obubudatadir = os.getenv('obubudatadir')
-clientid = os.getenv('apiclientid')
+yahooapiclientid = os.getenv('yahooapiclientid')
 
 def create_query_string(params):
     query_string = ''
@@ -44,41 +44,46 @@ def getweather(latitude, longitude, appid='', outputformat='json', past=2, inter
     if response.status_code == 200:
         responsejson = response.json()
         weather_list = responsejson['Feature'][0]['Property']['WeatherList']['Weather']
-        return weather_list
+        temp_list = responsejson["Feature"][0]["Property"]["WeatherList"]["Weather"][0]["Temperature"]
+
+        return [weather_list, temp_list]
         pprint(weather_list)
     else:
         print(f"Error: {response.status_code}")
 
 
-teagardendataxlsx = 'TeaGardensData.xlsx'
-teagardendata = obubudatadir + teagardendataxlsx
 
-data = read_xlsx_file(teagardendata)
+def rain_check():
 
-gardennames = []
+    teagardendataxlsx = 'TeaGardensData.xlsx'
+    teagardendata = obubudatadir + teagardendataxlsx
 
-for dict in data:
-    gardennames.append(dict['Tea Garden Name'])
+    data = read_xlsx_file(teagardendata)
 
-xlsx_path_name_list = createxlsxworkbook(date_string=date_string, filename_prefix='TeaGardensData', sheet_names=gardennames, xlsx_folder_path='/Users/georgeguttridge-smith/code/obubu/obubu-data/')
+    gardennames = []
 
-for dict in data:
-    weather_list = getweather(dict['Latitude'], dict['Longitude'], clientid)
-    weather_list = [weather for weather in weather_list if weather.get('Type') != 'forecast']
-    write_xlsx_worksheet(weather_list, dict['Tea Garden Name'], xlsx_path_name_list[0])
+    for dict in data:
+        gardennames.append(dict['Tea Garden Name'])
 
-rename_active_sheet(xlsx_path_name_list[0], 'Tea Gardens')
+    xlsx_path_name_list = createxlsxworkbook(date_string=date_string, filename_prefix='TeaGardensData', sheet_names=gardennames, xlsx_folder_path='/Users/georgeguttridge-smith/code/obubu/obubu-data/')
 
-copy_sheet_contents(teagardendata, 'Tea Gardens', xlsx_path_name_list[0], 'Tea Gardens')
+    for dict in data:
+        weather_list = getweather(dict['Latitude'], dict['Longitude'], yahooapiclientid)
+        weather_list = [weather for weather in weather_list if weather.get('Type') != 'forecast']
+        write_xlsx_worksheet(weather_list, dict['Tea Garden Name'], xlsx_path_name_list[0])
 
-sheetnames = get_sheet_names(xlsx_path_name_list[0])
+    rename_active_sheet(xlsx_path_name_list[0], 'Tea Gardens')
 
-for sheet in sheetnames:
-    if sheet == 'Tea Gardens':
-        delete_rows_with_duplicates(sheet, 'Tea Garden Name', xlsx_path_name_list[0])
-    else:
-        delete_rows_with_duplicates(sheet, 'Date', xlsx_path_name_list[0])
-        print(f'Rows from {sheet} have been delete')
+    copy_sheet_contents(teagardendata, 'Tea Gardens', xlsx_path_name_list[0], 'Tea Gardens')
+
+    sheetnames = get_sheet_names(xlsx_path_name_list[0])
+
+    for sheet in sheetnames:
+        if sheet == 'Tea Gardens':
+            delete_rows_with_duplicates(sheet, 'Tea Garden Name', xlsx_path_name_list[0])
+        else:
+            delete_rows_with_duplicates(sheet, 'Date', xlsx_path_name_list[0])
+            print(f'Rows from {sheet} have been delete')
 
 
 

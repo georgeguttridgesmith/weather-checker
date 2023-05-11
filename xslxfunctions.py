@@ -9,9 +9,14 @@ from datetime import date
 date_string = str(date.today())
 
 
-def read_xlsx_file(filepath):
+def read_xlsx_file(filepath, sheetname=''):
     wb = openpyxl.load_workbook(filepath)
-    ws = wb.active
+    sheetnames_list = wb.get_sheet_names()
+    sheetname_check_list = []
+    if sheetname == '':
+        sheetname = sheetnames_list[0]
+
+    ws = wb[sheetname]
     
     # Create a list to hold all the dictionaries
     data = []
@@ -57,7 +62,7 @@ def write_xlsx_worksheet(list_of_dict, sheet_name='', xlsx_file_loc=''):
     # Check if sheet exists
     if sheet_name in wb.sheetnames:
         ws = wb[sheet_name]
-        print(f"Sheet '{sheet_name}' already exists in workbook '{xlsx_file_loc}'.")
+        # print(f"Sheet '{sheet_name}' already exists in workbook '{xlsx_file_loc}'.")
     else:
         # Create new sheet
         ws = wb.create_sheet(sheet_name)
@@ -76,19 +81,35 @@ def write_xlsx_worksheet(list_of_dict, sheet_name='', xlsx_file_loc=''):
             ws.cell(row=1, column=col_num).font = Font(bold=True)
 
     # Write data to matching columns or new columns
-    for cus_dict in list_of_dict:
-        row_num = ws.max_row + 1
-        for key, value in cus_dict.items():
-            if key not in existing_headings:
-                # Add new column heading
-                new_col = get_column_letter(ws.max_column + 1)
-                ws[f"{new_col}1"].value = key
-                ws[f"{new_col}1"].font = Font(bold=True)
-                existing_headings.append(key)
+    if isinstance(list_of_dict, list):
+        for cus_dict in list_of_dict:
+            row_num = ws.max_row + 1
+            for key, value in cus_dict.items():
+                if key not in existing_headings:
+                    # Add new column heading
+                    new_col = get_column_letter(ws.max_column + 1)
+                    ws[f"{new_col}1"].value = key
+                    ws[f"{new_col}1"].font = Font(bold=True)
+                    existing_headings.append(key)
 
-            # Write data to correct column
-            col_num = existing_headings.index(key) + 1
-            ws.cell(row=row_num, column=col_num, value=value)
+                # Write data to correct column
+                col_num = existing_headings.index(key) + 1
+                ws.cell(row=row_num, column=col_num, value=value)
+    
+    elif isinstance(list_of_dict, dict):
+            row_num = ws.max_row + 1
+            for key, value in cus_dict.items():
+                if key not in existing_headings:
+                    # Add new column heading
+                    new_col = get_column_letter(ws.max_column + 1)
+                    ws[f"{new_col}1"].value = key
+                    ws[f"{new_col}1"].font = Font(bold=True)
+                    existing_headings.append(key)
+
+                # Write data to correct column
+                col_num = existing_headings.index(key) + 1
+                ws.cell(row=row_num, column=col_num, value=value)
+
 
 
     # Save workbook

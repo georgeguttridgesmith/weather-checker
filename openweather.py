@@ -101,6 +101,15 @@ def replace_weather_data_with_desc(data_dict):
     # Return the modified dictionary
     return data_dict
 
+def yyyy_mm_yy_unix(dates):
+    unix_dates = []
+    for date in dates:
+        date_obj = datetime.datetime.strptime(date, '%Y-%m-%d')
+        unix_time = int(date_obj.timestamp())
+        unix_dates.append(unix_time)
+
+    return unix_dates
+
 def generate_date_list(startdate=19790101, enddate=20230506):
     start_date = datetime.datetime.strptime(str(startdate), '%Y%m%d')
     end_date = datetime.datetime.strptime(str(enddate), '%Y%m%d')
@@ -150,9 +159,18 @@ def weather_check(dataxlsxname='', datadir='', start_date=20200101, end_date=202
 
     # Create the excel for the data to be able to be written too with a sheet for each of the gardesn
     xlsx_path_name_list = createxlsxworkbook(date_string=date_string, filename_prefix='OpenWeatherTeaGardensData', sheet_names=gardennames, xlsx_folder_path='/Users/georgeguttridge-smith/code/obubu/obubu-data/')
-    
+    recorded_data = read_xlsx_file(xlsx_path_name_list[0], 'Michinashi')
     # Get the dates wanted
     date_list = generate_date_list(start_date, end_date)
+
+    # remove already recorded dates
+    recorded_dates = []
+    for dict in recorded_data:
+        recorded_dates.append(dict['dt'])
+    for date in recorded_dates:
+        if date in date_list[1]:
+            date_list[1].remove(date)
+
 
 
     num_of_gardens = 1
@@ -162,12 +180,17 @@ def weather_check(dataxlsxname='', datadir='', start_date=20200101, end_date=202
             data_len = 0
             datelistlen = len(date_list[1])
             for date in date_list[1]:
+                print(f'Getting {date} Weather Data')
                 weather_dict = get_weather_data_historical(dict['Latitude'], dict['Longitude'], apikey, date)
+                print(f'Got {date} Weather Data')
+                print(f'Extracting Data from dictionary')
                 data_dict = extract_nested_dicts_lists(weather_dict['data'][0])
                 dates_data_list.append(data_dict)
                 data_len += 1
                 print(f'Date {data_len} of {datelistlen} recieved')
-            write_xlsx_worksheet(dates_data_list, dict['Tea Garden Name'], xlsx_path_name_list[0])
+                print(f'Writing {date} Data to excel')
+                write_xlsx_worksheet(dates_data_list, dict['Tea Garden Name'], xlsx_path_name_list[0])
+                print(f'Written {date} Data')
             num_of_gardens += 1
 
     rename_active_sheet(xlsx_path_name_list[0], 'Tea Gardens')
@@ -377,7 +400,11 @@ gardenlist = [
 # weather_data = replace_weather_data_with_desc(weather_data_dict)
 # ppprint(weather_data)
 
-weather_check('TeaGardensData.xlsx', obubudatadir, 20150101, 20230506 )
+# weather_check('TeaGardensData.xlsx', obubudatadir, 20150101, 20230506 )
+
+delete_rows_with_duplicates('Michinashi', 'dt', '/Users/georgeguttridge-smith/code/obubu/obubu-data/2023-05-09OpenWeatherTeaGardensData.xlsx')
+
+
 
 # extract_nested_dicts_lists(weather_data_dict)
 

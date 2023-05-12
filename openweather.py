@@ -129,69 +129,116 @@ def generate_date_list(startdate=19790101, enddate=20230506):
 
     print(len(dates))
 
-    days = len(dates)
-    # gardens = len(gardenlist)
-    gardens = 1
-    free_calls = 1000
-    single_call_price_gbp = 0.0012
-    pound_yen_exchange = 170
+    # days = len(dates)
+    # # gardens = len(gardenlist)
+    # gardens = 1
+    # free_calls = 1000
+    # single_call_price_gbp = 0.0012
+    # pound_yen_exchange = 170
 
-    total_api_calls = days * gardens
-    minus_free_calls = total_api_calls - free_calls
-    data_cost_gbp = minus_free_calls * single_call_price_gbp
-    data_cost_jpy = data_cost_gbp * pound_yen_exchange
+    # total_api_calls = days * gardens
+    # minus_free_calls = total_api_calls - free_calls
+    # data_cost_gbp = minus_free_calls * single_call_price_gbp
+    # data_cost_jpy = data_cost_gbp * pound_yen_exchange
 
-    print(f'The cost for {minus_free_calls} API calls in JPY is ¥{data_cost_jpy}')
-    print(f'The cost for {minus_free_calls} API calls in GBP is £{data_cost_gbp}')
+    # print(f'The cost for {minus_free_calls} API calls in JPY is ¥{data_cost_jpy}')
+    # print(f'The cost for {minus_free_calls} API calls in GBP is £{data_cost_gbp}')
 
     return [dates, unix_dates]
 
-def weather_check(dataxlsxname='', datadir='', start_date=20200101, end_date=20230101, ):
+def sort_dicts_by_year(data_list):
+    # Initialize an empty dictionary to store lists of dicts by year
+    year_dict = {}
+
+    # Iterate over each dict in the input list
+    for data in data_list:
+        # Convert the 'dt' Unix timestamp to a datetime object
+        dt = datetime.datetime.utcfromtimestamp(data['dt'])
+
+        # Extract the year from the datetime object
+        year = dt.year
+
+        # If this year is not yet a key in the dictionary, initialize it with an empty list
+        if year not in year_dict:
+            year_dict[year] = []
+
+        # Append the current dict to the list corresponding to this year
+        year_dict[year].append(data)
+
+    return year_dict
+
+def get_dict_by_value(list_of_dicts, key, value):
+    """
+    Retrieves a specific dictionary from a list of dictionaries based on a key-value pair.
+
+    Args:
+    - list_of_dicts (list): List of dictionaries to search through.
+    - key (str): Key to check for the desired value.
+    - value: Value to match in the dictionaries.
+
+    Returns:
+    - dict or None: The first dictionary that matches the specified key-value pair, or None if no match is found.
+    """
+
+    for dictionary in list_of_dicts:
+        if dictionary.get(key) == value:
+            return dictionary
+
+    return None
+
+def weather_check(dataxlsxname='', datadir='', start_date=20200101, end_date=20230101, teagarden=''):
+
+    gardennames = []
 
     # read the garden data from excel
     teagardendata = datadir + dataxlsxname
     data = read_xlsx_file(teagardendata)
-
-    # Get the names of all the gardens to loops through
-    gardennames = []
     for dict in data:
         gardennames.append(dict['Tea Garden Name'])
+    # Get the names of all the gardens to loops through
+    if teagarden == '':
+        gardennames.append(teagarden)
 
-    # Create the excel for the data to be able to be written too with a sheet for each of the gardesn
-    xlsx_path_name_list = createxlsxworkbook(date_string=date_string, filename_prefix='OpenWeatherTeaGardensData', sheet_names=gardennames, xlsx_folder_path='/Users/georgeguttridge-smith/code/obubu/obubu-data/')
-    recorded_data = read_xlsx_file(xlsx_path_name_list[0], 'Michinashi')
     # Get the dates wanted
     date_list = generate_date_list(start_date, end_date)
+    
+    # Create the excel for the data to be able to be written too with a sheet for each of the gardesn
+    xlsx_path_name_list = createxlsxworkbook(date_string=date_string, filename_prefix='OpenWeatherTeaGardensData', sheet_names=gardennames, xlsx_folder_path='/Users/georgeguttridge-smith/code/obubu/obubu-data/')
+    if teagarden != '':
+        recorded_data = read_xlsx_file(xlsx_path_name_list[0], teagarden)
+        
+        # remove already recorded dates
+        recorded_dates = []
+        for dict in recorded_data:
+            recorded_dates.append(dict['dt'])
+        for date in recorded_dates:
+            if date in date_list[1]:
+                date_list[1].remove(date)
 
-    # remove already recorded dates
-    recorded_dates = []
-    for dict in recorded_data:
-        recorded_dates.append(dict['dt'])
-    for date in recorded_dates:
-        if date in date_list[1]:
-            date_list[1].remove(date)
+    # get only the specified garden
+    if teagarden != '':
+        dict = get_dict_by_value(data, "Tea Garden Name", "Jinja")
+        data = [dict]
+
+
+    for dict in data:
+        data_len = 0
+        datelistlen = len(date_list[1])
+        for date in date_list[1]:
+            # print(f'Getting {date} Weather Data')
+            weather_dict = get_weather_data_historical(dict['Latitude'], dict['Longitude'], apikey, date)
+            # print(f'Got {date} Weather Data')
+            # print(f'Extracting Data from dictionary')
+            data_dict = extract_nested_dicts_lists(weather_dict['data'][0])
+            # dates_data_list.append(data_dict)
+            data_len += 1
+            print(f'Date {data_len} of {datelistlen} recieved')
+            # print(f'Writing {date} Data to excel')
+            write_xlsx_worksheet(data_dict, dict['Tea Garden Name'], xlsx_path_name_list[0])
+            # print(f'Written {date} Data')
 
 
 
-    num_of_gardens = 1
-    while num_of_gardens <= 1:
-        for dict in data:
-            dates_data_list = []
-            data_len = 0
-            datelistlen = len(date_list[1])
-            for date in date_list[1]:
-                print(f'Getting {date} Weather Data')
-                weather_dict = get_weather_data_historical(dict['Latitude'], dict['Longitude'], apikey, date)
-                print(f'Got {date} Weather Data')
-                print(f'Extracting Data from dictionary')
-                data_dict = extract_nested_dicts_lists(weather_dict['data'][0])
-                dates_data_list.append(data_dict)
-                data_len += 1
-                print(f'Date {data_len} of {datelistlen} recieved')
-                print(f'Writing {date} Data to excel')
-                write_xlsx_worksheet(dates_data_list, dict['Tea Garden Name'], xlsx_path_name_list[0])
-                print(f'Written {date} Data')
-            num_of_gardens += 1
 
     rename_active_sheet(xlsx_path_name_list[0], 'Tea Gardens')
 
@@ -204,7 +251,7 @@ def weather_check(dataxlsxname='', datadir='', start_date=20200101, end_date=202
             delete_rows_with_duplicates(sheet, 'Tea Garden Name', xlsx_path_name_list[0])
         else:
             delete_rows_with_duplicates(sheet, 'Date', xlsx_path_name_list[0])
-            print(f'Rows from {sheet} have been delete')
+            print(f'Rows from {sheet} have been deleted')
 
 weather_data_dict = {'data': [{'clouds': 56,
                                'dew_point': -1.16,
@@ -400,9 +447,9 @@ gardenlist = [
 # weather_data = replace_weather_data_with_desc(weather_data_dict)
 # ppprint(weather_data)
 
-# weather_check('TeaGardensData.xlsx', obubudatadir, 20150101, 20230506 )
+weather_check('TeaGardensData.xlsx', obubudatadir, 20150101, 20230506, 'Jinja')
 
-delete_rows_with_duplicates('Michinashi', 'dt', '/Users/georgeguttridge-smith/code/obubu/obubu-data/2023-05-09OpenWeatherTeaGardensData.xlsx')
+# delete_rows_with_duplicates('Michinashi', 'dt', '/Users/georgeguttridge-smith/code/obubu/obubu-data/2023-05-11OpenWeatherTeaGardensData.xlsx')
 
 
 

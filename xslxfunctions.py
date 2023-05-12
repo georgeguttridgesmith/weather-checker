@@ -5,6 +5,7 @@ from openpyxl.utils import get_column_letter
 from os.path import join, isfile
 import os
 from datetime import date
+from threading import Thread, Lock
 
 date_string = str(date.today())
 
@@ -75,7 +76,7 @@ def write_xlsx_worksheet(list_of_dict, sheet_name='', xlsx_file_loc=''):
 
     # Write headings if there are none in the first row
     if not existing_headings:
-        existing_headings = list(list_of_dict[0].keys())
+        existing_headings = list(list_of_dict.keys())
         for col_num, heading in enumerate(existing_headings, start=1):
             ws.cell(row=1, column=col_num).value = heading
             ws.cell(row=1, column=col_num).font = Font(bold=True)
@@ -97,6 +98,7 @@ def write_xlsx_worksheet(list_of_dict, sheet_name='', xlsx_file_loc=''):
                 ws.cell(row=row_num, column=col_num, value=value)
     
     elif isinstance(list_of_dict, dict):
+            cus_dict = list_of_dict
             row_num = ws.max_row + 1
             for key, value in cus_dict.items():
                 if key not in existing_headings:
@@ -203,6 +205,49 @@ def delete_xlsx_rows(sheet_names=[], rows=[], xlsx_file_loc=''):
     # Save workbook
     wb.save(xlsx_file_loc)
 
+# def delete_rows_with_duplicates(sheet_name='', col_name='', xlsx_file_loc=''):
+#     # Open workbook and worksheet
+#     wb = load_workbook(xlsx_file_loc)
+
+#     # Check if sheet exists
+#     if sheet_name not in wb.sheetnames:
+#         print(f"Sheet '{sheet_name}' not found in workbook '{xlsx_file_loc}'.")
+#         return
+
+#     ws = wb[sheet_name]
+
+#     # Get column index from column name
+#     col_index = None
+#     for cell in ws[1]:
+#         if cell.value == col_name:
+#             col_index = cell.column
+#             break
+
+#     if col_index is None:
+#         print(f"Column '{col_name}' not found in sheet '{sheet_name}' of workbook '{xlsx_file_loc}'.")
+#         return
+
+#     # Create set to store unique values
+#     unique_values = set()
+
+#     # Loop over rows and check for duplicates
+#     for row in reversed(range(1, ws.max_row + 1)):
+#         cell_value = ws.cell(row=row, column=col_index).value
+#         if cell_value in unique_values:
+#             # Delete entire row if duplicate found
+#             ws.delete_rows(row)
+#             print(f"Row {row} in sheet '{sheet_name}' of workbook '{xlsx_file_loc}' deleted due to duplicate value '{cell_value}' in column '{col_name}'.")
+#         else:
+#             unique_values.add(cell_value)
+
+#     # Save workbook
+#     wb.save(xlsx_file_loc)
+
+
+
+
+# from openpyxl import load_workbook
+
 def delete_rows_with_duplicates(sheet_name='', col_name='', xlsx_file_loc=''):
     # Open workbook and worksheet
     wb = load_workbook(xlsx_file_loc)
@@ -215,11 +260,7 @@ def delete_rows_with_duplicates(sheet_name='', col_name='', xlsx_file_loc=''):
     ws = wb[sheet_name]
 
     # Get column index from column name
-    col_index = None
-    for cell in ws[1]:
-        if cell.value == col_name:
-            col_index = cell.column
-            break
+    col_index = ws.cell(row=1, column=1, value=col_name).column
 
     if col_index is None:
         print(f"Column '{col_name}' not found in sheet '{sheet_name}' of workbook '{xlsx_file_loc}'.")
@@ -228,18 +269,30 @@ def delete_rows_with_duplicates(sheet_name='', col_name='', xlsx_file_loc=''):
     # Create set to store unique values
     unique_values = set()
 
+    # Cache cell objects for column of interest
+    col_cells = [row[col_index-1] for row in ws.rows]
+
     # Loop over rows and check for duplicates
-    for row in reversed(range(1, ws.max_row + 1)):
-        cell_value = ws.cell(row=row, column=col_index).value
+    rows_to_delete = set()
+    for row_num, cell in enumerate(col_cells[1:], start=2):
+        cell_value = cell.value
         if cell_value in unique_values:
-            # Delete entire row if duplicate found
-            ws.delete_rows(row)
-            print(f"Row {row} in sheet '{sheet_name}' of workbook '{xlsx_file_loc}' deleted due to duplicate value '{cell_value}' in column '{col_name}'.")
+            # Add row to set of rows to delete if duplicate found
+            rows_to_delete.add(row_num)
+            print(f"Row {row_num} in sheet '{sheet_name}' of workbook '{xlsx_file_loc}' added to set of rows to delete due to duplicate value '{cell_value}' in column '{col_name}'.")
         else:
             unique_values.add(cell_value)
 
+    # Delete rows in reverse order
+    for row_num in sorted(rows_to_delete, reverse=True):
+        ws.delete_rows(row_num)
+        print(f'Deleted {row_num}')
+
     # Save workbook
     wb.save(xlsx_file_loc)
+
+
+
 
 def get_sheet_names(xlsx_file_loc=''):
     wb = load_workbook(xlsx_file_loc)
